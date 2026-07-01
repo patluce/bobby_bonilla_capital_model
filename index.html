@@ -83,13 +83,22 @@
     .with-prefix input[type="number"] { padding-left: 2px; }
     .rule { height: 1px; background: var(--line); margin: 16px 0; }
     .note { font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+    .business-metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .business-metric { background: var(--field-soft); border-radius: 10px; padding: 13px 14px; border: 1px solid var(--line); }
+    .business-metric.neutral { background: var(--brass-soft); }
+    .business-metric.warning { background: var(--clay-soft); }
+    .business-metric-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; line-height: 1.25; }
+    .business-metric-value { font-family: var(--mono); font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1.1; }
+    .business-explain { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin-top: 10px; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
     .download { max-width: 960px; margin: 0 auto; padding: 4px clamp(20px,4vw,44px) 48px; font-family: var(--mono); }
     .dl-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border: 1.5px solid var(--ink); border-radius: 9px; color: var(--ink); background: var(--card); text-decoration: none; font-size: 13px; font-weight: 700; }
     .dl-btn:hover { background: var(--ink); color: var(--paper); }
     .dl-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
     footer { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.7; }
     .hide { display: none; }
-    @media (max-width: 720px) { .grid-two { grid-template-columns: minmax(0, 1fr); } .ledger-cell { border-bottom: 1px solid var(--line); } }
+    @media (max-width: 720px) { .grid-two, .business-metric-grid { grid-template-columns: minmax(0, 1fr); } .ledger-cell { border-bottom: 1px solid var(--line); } }
   </style>
 </head>
 <body>
@@ -107,6 +116,7 @@
     <nav class="tabs" aria-label="Calculator views">
       <button class="tab-btn active" id="tabBobby" type="button">Bobby's ledger</button>
       <button class="tab-btn" id="tabOwn" type="button">Run your own offer</button>
+      <button class="tab-btn" id="tabBusiness" type="button">Business capital decision</button>
     </nav>
 
     <section id="bobbyPanel">
@@ -215,6 +225,113 @@
 
         <p class="note">
           Works for pension buyouts, lottery cash-vs-annuity, structured settlements, deferred compensation, equipment financing, and business investment decisions. Social Security has its own rules, but the trade is similar: give up money today for a larger future stream and compare the implied rate to your own hurdle rate and time horizon.
+        </p>
+      </div>
+    </section>
+
+
+    <section id="businessPanel" class="hide">
+      <div class="stack">
+        <div class="grid-two">
+          <section class="card">
+            <div class="eyebrow">The business decision</div>
+            <p style="font-size:14.5px;line-height:1.45;margin-top:0;">
+              Bobby Bonilla Day is the fun example. This is the boardroom version: should you spend capital today for a future stream of operating benefits?
+            </p>
+
+            <div class="preset-row">
+              <button class="chip" data-business-preset="equipment" type="button">Equipment purchase</button>
+              <button class="chip" data-business-preset="expansion" type="button">Capacity expansion</button>
+              <button class="chip" data-business-preset="efficiency" type="button">Cost-saving project</button>
+            </div>
+
+            <label class="field">
+              <div class="field-label">Initial investment / upfront capital cost</div>
+              <div class="input-wrap with-prefix"><span class="prefix">$</span><input id="bizInitialInvestment" type="number" min="0" step="1000" value="100000" /></div>
+            </label>
+
+            <label class="field">
+              <div class="field-label">Annual revenue, savings, or benefit</div>
+              <div class="input-wrap with-prefix"><span class="prefix">$</span><input id="bizAnnualBenefit" type="number" min="0" step="1000" value="30000" /></div>
+            </label>
+
+            <label class="field">
+              <div class="field-label">Annual operating cost</div>
+              <div class="input-wrap with-prefix"><span class="prefix">$</span><input id="bizAnnualCost" type="number" min="0" step="1000" value="5000" /></div>
+            </label>
+
+            <label class="field">
+              <div class="field-label">Project life, years</div>
+              <div class="input-wrap"><input id="bizProjectLife" type="number" min="1" max="50" step="1" value="7" /></div>
+            </label>
+
+            <label class="field">
+              <div class="field-label">Terminal, resale, or remaining value</div>
+              <div class="input-wrap with-prefix"><span class="prefix">$</span><input id="bizTerminalValue" type="number" min="0" step="1000" value="10000" /></div>
+            </label>
+
+            <div class="rule"></div>
+
+            <div style="font-size:14px;margin-bottom:6px;">Hurdle rate: the return this project needs to clear</div>
+            <div class="rate-row" style="margin-bottom:10px;"><span class="value" style="font-size:30px;font-weight:800;color:var(--field);" id="bizRateBig">8.0</span><span class="rate-unit" style="font-size:15px;">%</span></div>
+            <input class="range" id="bizHurdleSlider" type="range" min="0" max="0.2" step="0.0025" value="0.08" aria-label="Business hurdle rate" />
+
+            <div class="chips">
+              <button class="chip" data-business-rate="0.05" type="button">Low-risk 5%</button>
+              <button class="chip active" data-business-rate="0.08" type="button">Base case 8%</button>
+              <button class="chip" data-business-rate="0.12" type="button">High bar 12%</button>
+            </div>
+          </section>
+
+          <div class="stack">
+            <section class="card accent" id="businessVerdictCard">
+              <div class="eyebrow">The capital call</div>
+              <div class="verdict-big" id="businessVerdictTitle"></div>
+              <p class="verdict-text" id="businessVerdictText"></p>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">The rate baked into the project</div>
+              <div class="rate-row"><span class="value" style="font-size:46px;font-weight:800;line-height:1;" id="bizIrrValue"></span><span class="rate-unit" style="color:var(--muted);" id="bizIrrUnit">%</span></div>
+              <p style="font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:8px;" id="bizIrrText"></p>
+            </section>
+          </div>
+        </div>
+
+        <section class="card">
+          <div class="business-metric-grid">
+            <div class="business-metric">
+              <div class="business-metric-label">Annual net cash flow</div>
+              <div class="business-metric-value" id="bizAnnualNet"></div>
+            </div>
+            <div class="business-metric">
+              <div class="business-metric-label">Net present value</div>
+              <div class="business-metric-value" id="bizNpv"></div>
+            </div>
+            <div class="business-metric">
+              <div class="business-metric-label">Benefit-cost ratio</div>
+              <div class="business-metric-value" id="bizBcr"></div>
+            </div>
+            <div class="business-metric neutral">
+              <div class="business-metric-label">Simple payback</div>
+              <div class="business-metric-value" id="bizSimplePayback"></div>
+            </div>
+            <div class="business-metric neutral">
+              <div class="business-metric-label">Discounted payback</div>
+              <div class="business-metric-value" id="bizDiscountedPayback"></div>
+            </div>
+            <div class="business-metric neutral">
+              <div class="business-metric-label">Equivalent annual value</div>
+              <div class="business-metric-value" id="bizEav"></div>
+            </div>
+          </div>
+          <p class="business-explain">
+            NPV shows whether the project creates value after the hurdle rate. IRR shows the project’s implied return. Payback shows how quickly the cash comes back, but NPV is the cleaner decision rule.
+          </p>
+        </section>
+
+        <p class="note">
+          Use this for equipment purchases, automation, expansion projects, cost-saving investments, lease-vs-buy thinking, or any decision where capital goes out today and cash flow comes back over time. The Excel model remains the deeper version; this web tab is the fast decision screen.
         </p>
       </div>
     </section>
@@ -426,13 +543,145 @@
       document.querySelectorAll('[data-user-rate]').forEach(btn => btn.classList.toggle('active', approx(userRate, Number(btn.dataset.userRate))));
     }
 
+
+    const businessPresets = {
+      equipment: { initial: 100000, benefit: 30000, cost: 5000, life: 7, terminal: 10000, rate: 0.08 },
+      expansion: { initial: 500000, benefit: 145000, cost: 35000, life: 10, terminal: 75000, rate: 0.10 },
+      efficiency: { initial: 75000, benefit: 22000, cost: 3000, life: 6, terminal: 5000, rate: 0.075 },
+    };
+
+    function businessNPV(rate, cashflows) {
+      let total = 0;
+      for (let year = 0; year < cashflows.length; year++) {
+        total += cashflows[year] / Math.pow(1 + rate, year);
+      }
+      return total;
+    }
+
+    function solveBusinessIRR(cashflows) {
+      const f = r => businessNPV(r, cashflows);
+      let lo = -0.99;
+      let hi = 3.0;
+
+      if (f(lo) * f(hi) > 0) return null;
+
+      for (let i = 0; i < 240; i++) {
+        const mid = (lo + hi) / 2;
+        if (f(mid) > 0) lo = mid;
+        else hi = mid;
+      }
+
+      return (lo + hi) / 2;
+    }
+
+    function discountedPayback(rate, initialInvestment, annualNetCashFlow, projectLife, terminalValue) {
+      let cumulative = -initialInvestment;
+
+      for (let year = 1; year <= projectLife; year++) {
+        let cashflow = annualNetCashFlow;
+        if (year === projectLife) cashflow += terminalValue;
+
+        const discountedCashflow = cashflow / Math.pow(1 + rate, year);
+        const previous = cumulative;
+        cumulative += discountedCashflow;
+
+        if (cumulative >= 0) {
+          const shortfallAtStartOfYear = -previous;
+          const fractionOfYear = discountedCashflow > 0 ? shortfallAtStartOfYear / discountedCashflow : 1;
+          return (year - 1) + fractionOfYear;
+        }
+      }
+
+      return null;
+    }
+
+    function equivalentAnnualValue(npv, rate, projectLife) {
+      if (projectLife <= 0) return null;
+      if (Math.abs(rate) < 0.000001) return npv / projectLife;
+      const factor = rate * Math.pow(1 + rate, projectLife) / (Math.pow(1 + rate, projectLife) - 1);
+      return npv * factor;
+    }
+
+    function updateBusiness() {
+      const initialInvestment = readNum('bizInitialInvestment', 0, 1000000000);
+      const annualBenefit = readNum('bizAnnualBenefit', 0, 1000000000);
+      const annualCost = readNum('bizAnnualCost', 0, 1000000000);
+      const projectLife = Math.round(readNum('bizProjectLife', 1, 50));
+      const terminalValue = readNum('bizTerminalValue', 0, 1000000000);
+      const hurdleRate = Number(el('bizHurdleSlider').value);
+      const annualNetCashFlow = annualBenefit - annualCost;
+
+      const cashflows = [-initialInvestment];
+      for (let year = 1; year <= projectLife; year++) {
+        let cashflow = annualNetCashFlow;
+        if (year === projectLife) cashflow += terminalValue;
+        cashflows.push(cashflow);
+      }
+
+      const npv = businessNPV(hurdleRate, cashflows);
+      const irr = solveBusinessIRR(cashflows);
+      const simplePayback = annualNetCashFlow > 0 ? initialInvestment / annualNetCashFlow : null;
+      const discPayback = discountedPayback(hurdleRate, initialInvestment, annualNetCashFlow, projectLife, terminalValue);
+      const pvBenefits = npv + initialInvestment;
+      const bcr = initialInvestment > 0 ? pvBenefits / initialInvestment : null;
+      const eav = equivalentAnnualValue(npv, hurdleRate, projectLife);
+
+      const closeEnough = Math.abs(npv) <= Math.max(1000, initialInvestment * 0.02);
+      const invest = npv > 0 && (irr === null || irr > hurdleRate);
+      const color = closeEnough ? cssVar('--brass') : invest ? cssVar('--field') : cssVar('--clay');
+
+      el('bizRateBig').textContent = (hurdleRate * 100).toFixed(1);
+      el('businessVerdictCard').style.borderLeftColor = color;
+      el('businessVerdictTitle').style.color = color;
+
+      if (closeEnough) {
+        el('businessVerdictTitle').textContent = 'Borderline';
+        el('businessVerdictText').innerHTML = `At a ${pct1(hurdleRate)} hurdle rate, this project is close to break-even with an NPV of <b style="color:${cssVar('--brass')}">${money0(npv)}</b>. Small changes in cost, revenue, timing, or risk could flip the decision.`;
+      } else if (invest) {
+        el('businessVerdictTitle').textContent = 'Invest';
+        el('businessVerdictText').innerHTML = `At a ${pct1(hurdleRate)} hurdle rate, the project creates about <b style="color:${cssVar('--field')}">${money0(npv)}</b> of value today. The future cash flow clears the capital cost.`;
+      } else {
+        el('businessVerdictTitle').textContent = 'Pass or renegotiate';
+        el('businessVerdictText').innerHTML = `At a ${pct1(hurdleRate)} hurdle rate, the project destroys about <b style="color:${cssVar('--clay')}">${money0(Math.abs(npv))}</b> of value today. The cash flow does not justify the upfront capital.`;
+      }
+
+      if (irr === null) {
+        el('bizIrrValue').textContent = 'n/a';
+        el('bizIrrUnit').textContent = '';
+        el('bizIrrText').textContent = 'The project cash flows do not solve cleanly to a standard IRR. Use NPV as the decision rule.';
+      } else {
+        el('bizIrrValue').textContent = (irr * 100).toFixed(1);
+        el('bizIrrUnit').textContent = '%';
+        el('bizIrrText').textContent = `The project's implied return. Compare this to the ${pct1(hurdleRate)} hurdle rate.`;
+      }
+
+      el('bizAnnualNet').textContent = money0(annualNetCashFlow);
+      el('bizNpv').textContent = money0(npv);
+      el('bizNpv').style.color = closeEnough ? cssVar('--brass') : npv >= 0 ? cssVar('--field') : cssVar('--clay');
+      el('bizBcr').textContent = bcr ? bcr.toFixed(2) + 'x' : 'n/a';
+      el('bizSimplePayback').textContent = simplePayback ? simplePayback.toFixed(1) + ' yrs' : 'n/a';
+      el('bizDiscountedPayback').textContent = discPayback ? discPayback.toFixed(1) + ' yrs' : 'not paid back';
+      el('bizEav').textContent = eav !== null ? money0(eav) + ' / yr' : 'n/a';
+
+      document.querySelectorAll('[data-business-rate]').forEach(btn => btn.classList.toggle('active', approx(hurdleRate, Number(btn.dataset.businessRate))));
+    }
+
     function setTab(which) {
       const bobby = which === 'bobby';
+      const own = which === 'own';
+      const business = which === 'business';
+
       el('tabBobby').classList.toggle('active', bobby);
-      el('tabOwn').classList.toggle('active', !bobby);
+      el('tabOwn').classList.toggle('active', own);
+      el('tabBusiness').classList.toggle('active', business);
+
       el('bobbyPanel').classList.toggle('hide', !bobby);
-      el('ownPanel').classList.toggle('hide', bobby);
-      if (bobby) updateBobby(); else updateOwn();
+      el('ownPanel').classList.toggle('hide', !own);
+      el('businessPanel').classList.toggle('hide', !business);
+
+      if (bobby) updateBobby();
+      if (own) updateOwn();
+      if (business) updateBusiness();
     }
 
     function init() {
@@ -444,6 +693,7 @@
       el('footerOwed').textContent = money0(OWED);
       el('tabBobby').addEventListener('click', () => setTab('bobby'));
       el('tabOwn').addEventListener('click', () => setTab('own'));
+      el('tabBusiness').addEventListener('click', () => setTab('business'));
       el('rateSlider').addEventListener('input', updateBobby);
       el('inflSlider').addEventListener('input', updateBobby);
       document.querySelectorAll('[data-rate]').forEach(btn => btn.addEventListener('click', () => { el('rateSlider').value = btn.dataset.rate; updateBobby(); }));
@@ -458,9 +708,23 @@
         el('deferInput').value = p.defer;
         updateOwn();
       }));
+      ['bizInitialInvestment','bizAnnualBenefit','bizAnnualCost','bizProjectLife','bizTerminalValue'].forEach(id => el(id).addEventListener('input', updateBusiness));
+      el('bizHurdleSlider').addEventListener('input', updateBusiness);
+      document.querySelectorAll('[data-business-rate]').forEach(btn => btn.addEventListener('click', () => { el('bizHurdleSlider').value = btn.dataset.businessRate; updateBusiness(); }));
+      document.querySelectorAll('[data-business-preset]').forEach(btn => btn.addEventListener('click', () => {
+        const p = businessPresets[btn.dataset.businessPreset];
+        el('bizInitialInvestment').value = p.initial;
+        el('bizAnnualBenefit').value = p.benefit;
+        el('bizAnnualCost').value = p.cost;
+        el('bizProjectLife').value = p.life;
+        el('bizTerminalValue').value = p.terminal;
+        el('bizHurdleSlider').value = p.rate;
+        updateBusiness();
+      }));
       window.addEventListener('resize', () => { if (!el('bobbyPanel').classList.contains('hide')) updateBobby(); });
       updateBobby();
       updateOwn();
+      updateBusiness();
     }
     document.addEventListener('DOMContentLoaded', init);
   </script>
