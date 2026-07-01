@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bobby Bonilla Day Capital Decision Calculator</title>
+  <meta name="description" content="A Bobby Bonilla Day calculator for discount rates, present value, deferrals, and money-now-versus-money-later decisions." />
+  <style>
+    :root {
+      --ink: #16241D;
+      --field: #1E5C3F;
+      --field-deep: #123D2A;
+      --field-soft: #E4EDE4;
+      --paper: #F0F2EC;
+      --card: #FBFCF9;
+      --line: #CDD6C9;
+      --clay: #B23A2E;
+      --clay-soft: #F4E2DF;
+      --brass: #A9822F;
+      --brass-soft: #F0E7CF;
+      --muted: #5C6B60;
+      --display: Georgia, 'Times New Roman', serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+      --body: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font-family: var(--body); }
+    .wrap { max-width: 960px; margin: 0 auto; padding: clamp(20px, 4vw, 44px); }
+    .header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 24px; }
+    .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--field); font-weight: 700; margin-bottom: 12px; }
+    .site-eyebrow { font-size: 12px; letter-spacing: 0.22em; }
+    h1 { font-family: var(--display); font-weight: 600; line-height: 1.02; font-size: clamp(30px, 6vw, 52px); margin: 10px 0 0; letter-spacing: -0.01em; }
+    h2 { font-family: var(--display); font-size: 30px; line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+    p { line-height: 1.55; }
+    .dek { max-width: 680px; margin-top: 14px; font-size: 16px; line-height: 1.55; }
+    .num, .value, .rate-big, .ledger-value { font-family: var(--mono); }
+    .num { font-weight: 700; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
+    button { font: inherit; }
+    .tab-btn, .chip { cursor: pointer; transition: all .15s ease; }
+    .tab-btn { font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em; padding: 9px 15px; border: 1.5px solid var(--line); border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; }
+    .tab-btn.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+    .chip { font-family: var(--mono); font-size: 12px; padding: 6px 11px; border-radius: 20px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-weight: 600; }
+    .chip.active { border-color: var(--field); background: var(--field-soft); color: var(--field-deep); }
+    .grid-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    .stack { display: flex; flex-direction: column; gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; overflow: hidden; }
+    .card.accent { border-left-width: 4px; }
+    .range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 6px; background: var(--field-soft); outline: none; cursor: pointer; }
+    .range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--field); border: 3px solid var(--card); box-shadow: 0 0 0 1.5px var(--field); cursor: pointer; }
+    .range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: var(--field); border: 3px solid var(--card); box-shadow: 0 0 0 1.5px var(--field); cursor: pointer; }
+    .range.brass { background: var(--brass-soft); }
+    .range.brass::-webkit-slider-thumb { background: var(--brass); box-shadow: 0 0 0 1.5px var(--brass); }
+    .range.brass::-moz-range-thumb { background: var(--brass); box-shadow: 0 0 0 1.5px var(--brass); }
+    .range:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+    .rate-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+    .rate-big { font-size: 46px; font-weight: 700; color: var(--field); line-height: 1; }
+    .rate-unit { font-family: var(--mono); font-size: 22px; color: var(--field); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+    .verdict-big { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1.05; letter-spacing: -0.01em; }
+    .verdict-text { font-size: 14.5px; line-height: 1.5; margin: 8px 0 0; color: var(--ink); }
+    .chart { width: 100%; height: 285px; display: block; }
+    .chart text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+    .chart-label { font-family: var(--mono); font-size: 10px; fill: var(--brass); }
+    .ledger { display: flex; flex-wrap: wrap; margin: -20px; }
+    .ledger-cell { padding: 16px 18px; border-right: 1px solid var(--line); flex: 1 1 150px; min-width: 150px; }
+    .ledger-cell:last-child { border-right: none; }
+    .ledger-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; line-height: 1.3; }
+    .ledger-value { font-size: 19px; font-weight: 600; color: var(--ink); }
+    .ledger-value.strong { font-size: 22px; font-weight: 800; }
+    .real-grid { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+    .real-left { min-width: 210px; flex: 1 1 210px; }
+    .real-right { flex: 1 1 240px; display: flex; flex-direction: column; gap: 10px; }
+    .real-stat { background: var(--brass-soft); border-radius: 9px; padding: 12px 14px; }
+    .real-head { font-family: var(--mono); font-size: 11px; letter-spacing: 0.03em; color: var(--brass); margin-bottom: 4px; font-weight: 700; }
+    .real-value { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--ink); }
+    .real-sub { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+    .field { display: block; margin-bottom: 12px; }
+    .field-label { font-size: 13.5px; color: var(--ink); margin-bottom: 5px; }
+    .input-wrap { display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; }
+    .prefix { font-family: var(--mono); font-size: 15px; color: var(--muted); padding: 0 4px 0 12px; }
+    input[type="number"] { font-family: var(--mono); font-size: 16px; color: var(--ink); border: none; outline: none; padding: 10px 12px; width: 100%; background: transparent; }
+    .with-prefix input[type="number"] { padding-left: 2px; }
+    .rule { height: 1px; background: var(--line); margin: 16px 0; }
+    .note { font-family: var(--mono); font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .download { max-width: 960px; margin: 0 auto; padding: 4px clamp(20px,4vw,44px) 48px; font-family: var(--mono); }
+    .dl-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border: 1.5px solid var(--ink); border-radius: 9px; color: var(--ink); background: var(--card); text-decoration: none; font-size: 13px; font-weight: 700; }
+    .dl-btn:hover { background: var(--ink); color: var(--paper); }
+    .dl-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+    footer { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.7; }
+    .hide { display: none; }
+    @media (max-width: 720px) { .grid-two { grid-template-columns: minmax(0, 1fr); } .ledger-cell { border-bottom: 1px solid var(--line); } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="header">
+      <div class="eyebrow site-eyebrow">Net present value · Bobby Bonilla Day</div>
+      <h1>One deal, every discount rate</h1>
+      <p class="dek">
+        The Mets owed Bobby Bonilla <span class="num" id="owedText"></span> in 2000. They chose to pay
+        <span class="num" id="nominalText"></span> instead. Whether that was brilliant or foolish comes down to a single number:
+        what they could earn on the cash they kept. Move it and watch.
+      </p>
+    </header>
+
+    <nav class="tabs" aria-label="Calculator views">
+      <button class="tab-btn active" id="tabBobby" type="button">Bobby's ledger</button>
+      <button class="tab-btn" id="tabOwn" type="button">Run your own offer</button>
+    </nav>
+
+    <section id="bobbyPanel">
+      <div class="grid-two">
+        <div class="stack">
+          <section class="card">
+            <div class="eyebrow">The lever</div>
+            <div style="font-size:14.5px;line-height:1.4;margin-bottom:14px;">What the Mets could earn each year on the cash they kept</div>
+            <div class="rate-row"><span class="rate-big" id="rateBig">8.00</span><span class="rate-unit">%</span></div>
+            <input class="range" id="rateSlider" type="range" min="0" max="0.15" step="0.0025" value="0.08" aria-label="Annual return the Mets could earn on kept cash" />
+            <div class="chips">
+              <button class="chip" data-rate="0.05" type="button">~5% Treasuries</button>
+              <button class="chip active" data-rate="0.08" type="button">8% the deal</button>
+              <button class="chip" data-rate="0.10" type="button">10% Madoff fantasy</button>
+            </div>
+          </section>
+
+          <section class="card accent" id="verdictCard">
+            <div class="eyebrow">The verdict</div>
+            <div class="verdict-big" id="verdictTitle"></div>
+            <p class="verdict-text" id="verdictText"></p>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="eyebrow">The fund that pays Bobby</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.45;margin-bottom:8px;" id="chartCaption"></div>
+          <svg class="chart" id="fundChart" role="img" aria-label="Fund balance chart from 2000 through 2035"></svg>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="ledger">
+          <div class="ledger-cell"><div class="ledger-label">Nominal paid, 2011-2035</div><div class="ledger-value" id="ledgerNominal"></div></div>
+          <div class="ledger-cell"><div class="ledger-label" id="ledgerPvLabel"></div><div class="ledger-value strong" id="ledgerPv"></div></div>
+          <div class="ledger-cell"><div class="ledger-label">What they owed in 2000</div><div class="ledger-value" id="ledgerOwed"></div></div>
+          <div class="ledger-cell"><div class="ledger-label">Fund balance in 2035</div><div class="ledger-value" id="ledgerEnding"></div></div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="eyebrow">The second discount: inflation</div>
+        <div class="real-grid">
+          <div class="real-left">
+            <div style="font-size:13.5px;line-height:1.45;margin-bottom:12px;">
+              Nominal dollars flatter the payout. A check for <span id="paymentText"></span> in 2035 does not buy what it did when the checks began in 2011.
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--field);margin-bottom:6px;">inflation assumption</div>
+            <div class="rate-row" style="margin-bottom:10px;"><span class="value" style="font-size:28px;font-weight:800;" id="inflBig">2.5</span><span class="rate-unit" style="font-size:15px;color:var(--muted);">% / yr</span></div>
+            <input class="range brass" id="inflSlider" type="range" min="0" max="0.06" step="0.0025" value="0.025" aria-label="Annual inflation assumption" />
+          </div>
+          <div class="real-right">
+            <div class="real-stat"><div class="real-head">The final 2035 check, in 2011 money</div><div class="real-value" id="finalReal"></div><div class="real-sub" id="finalRealSub"></div></div>
+            <div class="real-stat"><div class="real-head" id="totalRealHead"></div><div class="real-value" id="totalReal"></div><div class="real-sub">What the whole stream is worth in 2011 buying power</div></div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section id="ownPanel" class="hide">
+      <div class="stack">
+        <div class="grid-two">
+          <section class="card">
+            <div class="eyebrow">The offer on the table</div>
+            <div class="chips" style="margin:0 0 18px;">
+              <button class="chip" data-preset="pension" type="button">Pension buyout</button>
+              <button class="chip" data-preset="lottery" type="button">Lottery: cash vs annuity</button>
+              <button class="chip" data-preset="settlement" type="button">Structured settlement</button>
+            </div>
+            <label class="field"><div class="field-label">Lump sum offered now</div><div class="input-wrap with-prefix"><span class="prefix">$</span><input id="lumpInput" type="number" min="0" step="1000" value="250000" /></div></label>
+            <label class="field"><div class="field-label">Each payment instead</div><div class="input-wrap with-prefix"><span class="prefix">$</span><input id="pmtInput" type="number" min="0" step="500" value="18000" /></div></label>
+            <label class="field"><div class="field-label">Number of payments</div><div class="input-wrap"><input id="nInput" type="number" min="1" max="60" step="1" value="25" /></div></label>
+            <label class="field"><div class="field-label">Years until the first payment</div><div class="input-wrap"><input id="deferInput" type="number" min="0" max="40" step="1" value="1" /></div></label>
+            <div class="rule"></div>
+            <div style="font-size:14px;margin-bottom:6px;">Your rate: what your money can reliably earn</div>
+            <div class="rate-row" style="margin-bottom:10px;"><span class="value" style="font-size:30px;font-weight:800;color:var(--field);" id="userRateBig">5.0</span><span class="rate-unit" style="font-size:15px;">%</span></div>
+            <input class="range" id="userRateSlider" type="range" min="0" max="0.15" step="0.0025" value="0.05" aria-label="Rate your money can reliably earn" />
+            <div class="chips">
+              <button class="chip" data-user-rate="0.04" type="button">Cash / T-bills ~4%</button>
+              <button class="chip" data-user-rate="0.044" type="button">10-yr Treasury 4.4%</button>
+              <button class="chip" data-user-rate="0.07" type="button">Stocks, long run ~7%</button>
+            </div>
+          </section>
+
+          <div class="stack">
+            <section class="card">
+              <div class="eyebrow">The rate baked into the offer</div>
+              <div class="rate-row"><span class="value" style="font-size:46px;font-weight:800;line-height:1;" id="irrValue"></span><span class="rate-unit" style="color:var(--muted);" id="irrUnit">%</span></div>
+              <p style="font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:8px;" id="irrText"></p>
+            </section>
+            <section class="card accent" id="ownVerdictCard">
+              <div class="eyebrow">Your call</div>
+              <div class="verdict-big" id="ownVerdictTitle"></div>
+              <p class="verdict-text" id="ownVerdictText"></p>
+            </section>
+          </div>
+        </div>
+
+        <section class="card">
+          <div class="ledger">
+            <div class="ledger-cell"><div class="ledger-label">Lump sum now</div><div class="ledger-value" id="ownLump"></div></div>
+            <div class="ledger-cell"><div class="ledger-label">Nominal total of payments</div><div class="ledger-value" id="ownNominal"></div></div>
+            <div class="ledger-cell"><div class="ledger-label" id="ownPvLabel"></div><div class="ledger-value strong" id="ownPv"></div></div>
+          </div>
+        </section>
+
+        <p class="note">
+          Works for pension buyouts, lottery cash-vs-annuity, structured settlements, deferred compensation, equipment financing, and business investment decisions. Social Security has its own rules, but the trade is similar: give up money today for a larger future stream and compare the implied rate to your own hurdle rate and time horizon.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      Educational, not financial advice. Bobby's math: <span id="footerPayment"></span> × 25 = <span id="footerNominal"></span>, an 8% return on <span id="footerOwed"></span> deferred from 2000 and paid every July 1 from 2011 through 2035.
+    </footer>
+  </main>
+
+  <div class="download">
+    <a class="dl-btn" href="./bobby_bonilla_capital_model.xlsx" download>&darr;&nbsp; Download the Excel model</a>
+    <div class="dl-note">Same math as the tool above, with live formulas you can change. Keep this file in the same GitHub folder as index.html.</div>
+  </div>
+
+  <script>
+    const PAYMENT = 1193248.2;
+    const OWED = 5900000;
+    const FIRST = 2011;
+    const LAST = 2035;
+    const BASE = 2000;
+    const NOMINAL = PAYMENT * 25;
+
+    const fmt0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const fmt2 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    const money0 = n => Number.isFinite(n) ? fmt0.format(n) : 'n/a';
+    const money2 = n => Number.isFinite(n) ? fmt2.format(n) : 'n/a';
+    const pct1 = n => Number.isFinite(n) ? (n * 100).toFixed(1) + '%' : 'n/a';
+    const pct2 = n => Number.isFinite(n) ? (n * 100).toFixed(2) + '%' : 'n/a';
+
+    function pv2000(r) {
+      let pv = 0;
+      for (let y = FIRST; y <= LAST; y++) pv += PAYMENT / Math.pow(1 + r, y - BASE);
+      return pv;
+    }
+    function fundSeries(r) {
+      let bal = OWED;
+      const out = [{ year: BASE, balance: bal }];
+      for (let y = BASE + 1; y <= LAST; y++) {
+        bal = bal * (1 + r) - (y >= FIRST && y <= LAST ? PAYMENT : 0);
+        out.push({ year: y, balance: bal });
+      }
+      return out;
+    }
+    function pvStream(r, pmt, n, defer) {
+      let s = 0;
+      for (let k = 0; k < n; k++) s += pmt / Math.pow(1 + r, defer + k);
+      return s;
+    }
+    function solveIRR(lump, pmt, n, defer) {
+      const f = r => pvStream(r, pmt, n, defer) - lump;
+      let lo = -0.9, hi = 3.0;
+      if (f(lo) * f(hi) > 0) return null;
+      for (let i = 0; i < 240; i++) {
+        const mid = (lo + hi) / 2;
+        if (f(mid) > 0) lo = mid;
+        else hi = mid;
+      }
+      return (lo + hi) / 2;
+    }
+    function approx(a, b) { return Math.abs(a - b) < 0.0013; }
+    function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+    function el(id) { return document.getElementById(id); }
+
+    function drawChart(series, positive) {
+      const svg = el('fundChart');
+      const width = Math.max(600, svg.clientWidth || 600);
+      const height = 285;
+      const pad = { top: 16, right: 16, bottom: 32, left: 64 };
+      const xs = series.map(d => d.year);
+      const ys = series.map(d => d.balance);
+      let minY = Math.min(0, ...ys);
+      let maxY = Math.max(0, ...ys);
+      const span = maxY - minY || 1;
+      minY -= span * 0.12;
+      maxY += span * 0.12;
+      const x = year => pad.left + (year - BASE) / (LAST - BASE) * (width - pad.left - pad.right);
+      const y = val => pad.top + (maxY - val) / (maxY - minY) * (height - pad.top - pad.bottom);
+      const lineColor = positive ? cssVar('--field') : cssVar('--clay');
+      const fillColor = positive ? cssVar('--field-soft') : cssVar('--clay-soft');
+      const zeroY = y(0);
+      const path = series.map((d, i) => (i ? 'L' : 'M') + x(d.year).toFixed(2) + ',' + y(d.balance).toFixed(2)).join(' ');
+      const area = path + ' L ' + x(LAST).toFixed(2) + ',' + zeroY.toFixed(2) + ' L ' + x(BASE).toFixed(2) + ',' + zeroY.toFixed(2) + ' Z';
+      const ticksX = [2000,2005,2010,2015,2020,2025,2030,2035];
+      const tickVals = [];
+      const step = niceStep((maxY - minY) / 4);
+      const start = Math.ceil(minY / step) * step;
+      for (let v = start; v <= maxY; v += step) tickVals.push(v);
+      let html = `<rect width="100%" height="100%" fill="transparent"></rect>`;
+      for (const v of tickVals) {
+        html += `<line x1="${pad.left}" y1="${y(v)}" x2="${width-pad.right}" y2="${y(v)}" stroke="${cssVar('--line')}" stroke-dasharray="2 4" />`;
+        html += `<text x="${pad.left-8}" y="${y(v)+4}" text-anchor="end">${axisMoney(v)}</text>`;
+      }
+      for (const t of ticksX) html += `<text x="${x(t)}" y="${height-8}" text-anchor="middle">${t}</text>`;
+      html += `<line x1="${pad.left}" y1="${zeroY}" x2="${width-pad.right}" y2="${zeroY}" stroke="${cssVar('--ink')}" stroke-width="1.3" />`;
+      html += `<line x1="${x(FIRST)}" y1="${pad.top}" x2="${x(FIRST)}" y2="${height-pad.bottom}" stroke="${cssVar('--brass')}" stroke-dasharray="4 4" />`;
+      html += `<text class="chart-label" x="${x(FIRST)+5}" y="${pad.top+12}">payouts begin</text>`;
+      html += `<path d="${area}" fill="${fillColor}" opacity="0.85"></path>`;
+      html += `<path d="${path}" fill="none" stroke="${lineColor}" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"></path>`;
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.innerHTML = html;
+    }
+    function niceStep(raw) {
+      const pow = Math.pow(10, Math.floor(Math.log10(Math.abs(raw) || 1)));
+      const norm = raw / pow;
+      const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+      return nice * pow;
+    }
+    function axisMoney(v) {
+      const sign = v < 0 ? '-' : '';
+      return sign + '$' + Math.abs(v / 1e6).toFixed(0) + 'M';
+    }
+
+    function updateBobby() {
+      const rate = Number(el('rateSlider').value);
+      const infl = Number(el('inflSlider').value);
+      const series = fundSeries(rate);
+      const pv = pv2000(rate);
+      const ending = series[series.length - 1].balance;
+      const net = OWED - pv;
+      const positive = ending >= 0;
+      const fair = Math.abs(net) < 25000;
+
+      el('rateBig').textContent = (rate * 100).toFixed(2);
+      el('chartCaption').innerHTML = `${money0(OWED)} invested at ${(rate * 100).toFixed(2)}%, minus a ${money0(PAYMENT)} check every July from 2011 to 2035. Where it lands in 2035 is the Mets' profit or shortfall.`;
+
+      const verdictCard = el('verdictCard');
+      const verdictTitle = el('verdictTitle');
+      const verdictText = el('verdictText');
+      const color = fair ? cssVar('--brass') : positive ? cssVar('--field') : cssVar('--clay');
+      verdictCard.style.borderLeftColor = color;
+      verdictTitle.style.color = color;
+      if (fair) {
+        verdictTitle.textContent = 'A wash';
+        verdictText.innerHTML = `At 8% the deal is exactly fair. Deferring neither helped nor hurt; the ${money0(NOMINAL)} headline is simply ${money0(OWED)} compounded at the rate they agreed to pay.`;
+      } else if (positive) {
+        verdictTitle.textContent = 'Deferring won';
+        verdictText.innerHTML = `Earning more than 8%, the Mets came out ahead by about <b style="color:${cssVar('--field')}">${money0(net)}</b> in 2000 dollars. They kept ${money0(OWED)}, grew it faster than the 8% they owed, and pocketed the spread.`;
+      } else {
+        verdictTitle.textContent = 'Deferring lost';
+        verdictText.innerHTML = `Earning less than 8%, deferring cost the Mets about <b style="color:${cssVar('--clay')}">${money0(-net)}</b> in 2000 dollars. Paying Bobby up front would have been cheaper than the 8% they promised him.`;
+      }
+
+      el('ledgerNominal').textContent = money0(NOMINAL);
+      el('ledgerPvLabel').textContent = `Present value in 2000 at ${(rate * 100).toFixed(2)}%`;
+      el('ledgerPv').textContent = money0(pv);
+      el('ledgerOwed').textContent = money0(OWED);
+      el('ledgerEnding').textContent = (ending < 0 ? '-' : '') + money0(Math.abs(ending));
+      el('ledgerEnding').style.color = positive ? cssVar('--field') : cssVar('--clay');
+
+      el('inflBig').textContent = (infl * 100).toFixed(1);
+      const finalReal = PAYMENT / Math.pow(1 + infl, LAST - FIRST);
+      let totalReal = 0;
+      for (let y = FIRST; y <= LAST; y++) totalReal += PAYMENT / Math.pow(1 + infl, y - FIRST);
+      el('finalReal').textContent = money0(finalReal);
+      el('finalRealSub').textContent = `Same ${money0(PAYMENT)} face value, ${((1 - finalReal / PAYMENT) * 100).toFixed(0)}% less purchasing power`;
+      el('totalRealHead').textContent = `The full ${money0(NOMINAL)} headline, in 2011 dollars`;
+      el('totalReal').textContent = money0(totalReal);
+      drawChart(series, positive);
+
+      document.querySelectorAll('[data-rate]').forEach(btn => btn.classList.toggle('active', approx(rate, Number(btn.dataset.rate))));
+    }
+
+    const presets = {
+      pension: { lump: 250000, pmt: 18000, n: 25, defer: 1 },
+      lottery: { lump: 1000000, pmt: 62000, n: 26, defer: 0 },
+      settlement: { lump: 180000, pmt: 12000, n: 20, defer: 1 },
+    };
+    function readNum(id, min, max) {
+      const v = Number(el(id).value);
+      if (!Number.isFinite(v)) return min;
+      return Math.min(max, Math.max(min, v));
+    }
+    function updateOwn() {
+      const lump = readNum('lumpInput', 0, 100000000);
+      const pmt = readNum('pmtInput', 0, 100000000);
+      const n = Math.round(readNum('nInput', 1, 60));
+      const defer = Math.round(readNum('deferInput', 0, 40));
+      const userRate = Number(el('userRateSlider').value);
+      const irr = solveIRR(lump, pmt, n, defer);
+      const pv = pvStream(userRate, pmt, n, defer);
+      const totalNominal = pmt * n;
+      const streamWins = pv >= lump;
+
+      el('userRateBig').textContent = (userRate * 100).toFixed(1);
+      if (irr === null) {
+        el('irrValue').textContent = 'n/a';
+        el('irrUnit').textContent = '';
+        el('irrText').textContent = 'These payments do not solve to a standard positive return versus the lump sum.';
+      } else {
+        el('irrValue').textContent = (irr * 100).toFixed(1);
+        el('irrUnit').textContent = '%';
+        el('irrText').textContent = 'The return the payment stream pays you for waiting. Compare it to your own rate below.';
+      }
+      const color = streamWins ? cssVar('--field') : cssVar('--clay');
+      el('ownVerdictCard').style.borderLeftColor = color;
+      el('ownVerdictTitle').style.color = color;
+      if (streamWins) {
+        el('ownVerdictTitle').textContent = 'Take the payments';
+        el('ownVerdictText').innerHTML = `At your ${pct1(userRate)} rate the stream is worth <b style="color:${cssVar('--field')}">${money0(pv)}</b>, which beats the ${money0(lump)} lump sum by about <b style="color:${cssVar('--field')}">${money0(pv - lump)}</b>. The offer out-earns you.`;
+      } else {
+        el('ownVerdictTitle').textContent = 'Take the lump sum';
+        el('ownVerdictText').innerHTML = `At your ${pct1(userRate)} rate the stream is worth only <b style="color:${cssVar('--clay')}">${money0(pv)}</b>, short of the ${money0(lump)} lump sum by about <b style="color:${cssVar('--clay')}">${money0(lump - pv)}</b>. Your money out-earns the offer.`;
+      }
+      el('ownLump').textContent = money0(lump);
+      el('ownNominal').textContent = money0(totalNominal);
+      el('ownPvLabel').textContent = `Present value at ${pct1(userRate)}`;
+      el('ownPv').textContent = money0(pv);
+      el('ownPv').style.color = color;
+      document.querySelectorAll('[data-user-rate]').forEach(btn => btn.classList.toggle('active', approx(userRate, Number(btn.dataset.userRate))));
+    }
+
+    function setTab(which) {
+      const bobby = which === 'bobby';
+      el('tabBobby').classList.toggle('active', bobby);
+      el('tabOwn').classList.toggle('active', !bobby);
+      el('bobbyPanel').classList.toggle('hide', !bobby);
+      el('ownPanel').classList.toggle('hide', bobby);
+      if (bobby) updateBobby(); else updateOwn();
+    }
+
+    function init() {
+      el('owedText').textContent = money0(OWED);
+      el('nominalText').textContent = money0(NOMINAL);
+      el('paymentText').textContent = money0(PAYMENT);
+      el('footerPayment').textContent = money2(PAYMENT);
+      el('footerNominal').textContent = money0(NOMINAL);
+      el('footerOwed').textContent = money0(OWED);
+      el('tabBobby').addEventListener('click', () => setTab('bobby'));
+      el('tabOwn').addEventListener('click', () => setTab('own'));
+      el('rateSlider').addEventListener('input', updateBobby);
+      el('inflSlider').addEventListener('input', updateBobby);
+      document.querySelectorAll('[data-rate]').forEach(btn => btn.addEventListener('click', () => { el('rateSlider').value = btn.dataset.rate; updateBobby(); }));
+      ['lumpInput','pmtInput','nInput','deferInput'].forEach(id => el(id).addEventListener('input', updateOwn));
+      el('userRateSlider').addEventListener('input', updateOwn);
+      document.querySelectorAll('[data-user-rate]').forEach(btn => btn.addEventListener('click', () => { el('userRateSlider').value = btn.dataset.userRate; updateOwn(); }));
+      document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+        const p = presets[btn.dataset.preset];
+        el('lumpInput').value = p.lump;
+        el('pmtInput').value = p.pmt;
+        el('nInput').value = p.n;
+        el('deferInput').value = p.defer;
+        updateOwn();
+      }));
+      window.addEventListener('resize', () => { if (!el('bobbyPanel').classList.contains('hide')) updateBobby(); });
+      updateBobby();
+      updateOwn();
+    }
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
